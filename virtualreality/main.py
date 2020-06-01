@@ -31,6 +31,10 @@ def main():
         from virtualreality.trackers.color_tracker import main
 
         main()
+    elif args["<command>"] == "track-dev" :
+        from virtualreality.trackers.pose_tracker import main
+
+        main()
     elif args["<command>"] == "server":
         from virtualreality.server.server import run_til_dead
 
