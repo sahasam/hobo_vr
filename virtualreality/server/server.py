@@ -1,8 +1,8 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
 
-from virtualreality.templates import PoserTemplate
-from virtualreality.util import utilz as u
+from ..templates import PoserTemplate
+from ..util import utilz as u
 
 DOMAIN = (None, 6969)
 conz = {}
@@ -23,7 +23,7 @@ async def broadcast(everyone, data, me, VIP):
     for key, acc in everyone.items():
         try:
             if me != key and (VIP == acc[2] or acc[3]):
-                acc[1].write(u.format_str_for_write(data))
+                acc[1].write(data)
                 await acc[1].drain()
 
         except:
@@ -35,26 +35,26 @@ async def broadcast(everyone, data, me, VIP):
 
 async def handle_echo(reader, writer):
     """Handle communication between poser and driver."""
+    addr = writer.get_extra_info("peername")
     while 1:
         try:
-            addr = writer.get_extra_info("peername")
 
-            data = await u.read(reader)
+            data = await u.read3(reader)
             if addr not in conz:
                 print("New connection from {}".format(addr))
                 isDriver = False
                 isPoser = False
-                if data == "hello\n":
+                if data == b"hello\n":
                     print("driver connected")
                     isDriver = True
 
-                if data == "poser here\n":
+                if data == b"poser here\n":
                     print("poser connected")
                     isPoser = True
 
                 conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
 
-            if not len(data) or data == "CLOSE\n":
+            if not len(data) or data == b"CLOSE\n":
                 break
 
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
@@ -68,9 +68,10 @@ async def handle_echo(reader, writer):
             print("Losing connection to {}, reason: {}".format(addr, e))
             break
 
-    print("Close the client socket")
+    print(f"Connection to {addr} closed")
     writer.close()
-    del conz[addr]
+    if addr in conz:
+        del conz[addr]
 
 
 def run_til_dead(poser: PoserTemplate = None):

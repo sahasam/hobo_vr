@@ -17,6 +17,8 @@ more examples/references:
 import asyncio
 import time
 import serial
+import numpy as np
+import pyrr
 
 from virtualreality import templates
 from virtualreality.server import server
@@ -24,8 +26,7 @@ from virtualreality.util import utilz as u
 
 poser = templates.PoserClient()
 
-
-@poser.thread_register(1 / 100)
+@poser.thread_register(1/60)
 async def example_thread():
     while poser.coro_keep_alive["example_thread"][0]:
         try:

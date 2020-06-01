@@ -9,24 +9,27 @@ Options:
    -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
    -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
-   -ip, --ip_address <ip_address>  IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --server                    Run the server alongside the tracker.
+   -i, --ip_address <ip_address>   IP Address of the server to connect to [default: 127.0.0.1]
+   -s, --standalone                Run the server alongside the tracker.
 """
+
+# undocumented reference
+# kinda specific to okawo's hardware
 
 import asyncio
 import math
 import sys
 from copy import copy
-
+import numpy as np
 import serial
 import serial.threaded
-import squaternion as sq
+import pyrr
 from docopt import docopt
 
 from ..util import utilz as u
 from .. import __version__
 from .. import templates
-from ..calibration.manual_color_mask_calibration import load_calibration
+from ..calibration.manual_color_mask_calibration import CalibrationData
 from ..server import server
 from ..templates import ControllerState
 
@@ -49,7 +52,7 @@ class Poser(templates.PoserTemplate):
         self.camera = camera
         self.width = width
         self.height = height
-        self.calibration = load_calibration(calibration_file)
+        self.calibration = CalibrationData.load_from_file(calibration_file)
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
@@ -179,7 +182,9 @@ class Poser(templates.PoserTemplate):
                                         self.temp_pose.vel_z = 0
 
                                     yaw = y
-                                    w, x, y, z = sq.Quaternion.from_euler(y + yaw_offset, p, r, degrees=True)
+                                    eulers = [y + yaw_offset, p, r]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     self.temp_pose.r_w = round(w, 4)
                                     self.temp_pose.r_x = round(y, 4)
@@ -256,7 +261,9 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True,)
+                                    eulers = [ypr[0] + yaw_offset, ypr[1], ypr[2]]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
@@ -311,13 +318,9 @@ def main():
     else:
         cam = args["--camera"]
 
-    if args["--server"]:
+    if args["--standalone"]:
         run_poser_and_server(args["--ip_address"], cam)
     else:
         run_poser_only(args["--ip_address"], cam)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()

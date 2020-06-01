@@ -1,19 +1,34 @@
+"""
+pyvr track.
+
+Usage:
+    pyvr track [options]
+
+Options:
+   -h, --help
+   -l, --load_calibration <file>    (in progress) Load color mask calibration settings [default: ranges.pickle]
+   -i, --ip_address <ip_address>    IP Address of the server to connect to [default: 127.0.0.1]
+   --calibration-data <calib_file>  Source of the camera to use for calibration
+   -s, --standalone                 Run the server alongside the tracker.
+"""
+
 import asyncio
 import math
 import sys
 
 import serial
 import serial.threaded
-import squaternion as sq
+import pyrr
 from docopt import docopt
 from ..util import utilz as u
 from ..util.IMU import get_i2c_imu
 from ..util.kalman import EulerKalman
-
+import numpy as np
 from .. import __version__
 from .. import templates
 from ..server import server
 from ..templates import PoseEuler
+from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
 
 
 def horizontal_asymptote(val, max_val, speed=1):
@@ -23,11 +38,7 @@ def horizontal_asymptote(val, max_val, speed=1):
 
 
 class HeadsetPoserPiece(object):
-    def __init__(self,
-                 tracker_camera=0,
-                 imu_factory=get_i2c_imu,
-                 blob_colors={},
-                 translation_offsets={}):
+    def __init__(self, tracker_camera=0, imu_factory=get_i2c_imu, blob_colors={}, translation_offsets={}):
         self.tracker_camera = tracker_camera
         self.conn, self.imu = imu_factory()
         self.pose = PoseEuler()
@@ -41,11 +52,7 @@ class HeadsetPoserPiece(object):
 
         try:
             if self.blob_colors:
-                self.blob_tracker = u.BlobTracker(
-                    self.tracker_camera,
-                    offsets=[0, 0, 0],
-                    color_masks=self.blob_colors,
-                )
+                self.blob_tracker = u.BlobTracker(self.tracker_camera, offsets=[0, 0, 0], color_masks=self.blob_colors,)
             else:
                 self.blob_tracker = None
         except Exception as e:
@@ -86,11 +93,14 @@ class Poser(templates.PoserTemplate):
         """Create a pose estimator."""
         super().__init__(*args, **kwargs)
 
-        self.headset = HeadsetPoserPiece(0,
-                                         blob_colors={"blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
-                                                      "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)}},
-                                         translation_offsets={"blue": [0, 0, 0],
-                                                              "green": [0, 0, 0]})
+        self.headset = HeadsetPoserPiece(
+            0,
+            blob_colors={
+                "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
+                "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
+            },
+            translation_offsets={"blue": [0, 0, 0], "green": [0, 0, 0]},
+        )
 
         self.mode = 0
         self.useVelocity = False
@@ -201,7 +211,9 @@ class Poser(templates.PoserTemplate):
                                         self.temp_pose.vel_z = 0
 
                                     yaw = y
-                                    w, x, y, z = sq.Quaternion.from_euler(y + yaw_offset, p, r, degrees=True)
+                                    eulers = [y + yaw_offset, p, r]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     self.temp_pose.r_w = round(w, 4)
                                     self.temp_pose.r_x = round(y, 4)
@@ -278,7 +290,9 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True, )
+                                    eulers = [ypr[0] + yaw_offset, ypr[1], ypr[2]]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
@@ -305,15 +319,15 @@ class Poser(templates.PoserTemplate):
             await asyncio.sleep(1)
 
 
-def run_poser_only(addr="127.0.0.1", cam=4):
+def run_poser_only(addr, calib):
     """Run the poser only. The server must be started in another program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, calib=calib)
     asyncio.run(t.main())
 
 
-def run_poser_and_server(addr="127.0.0.1", cam=4):
+def run_poser_and_server(addr, calib):
     """Run the poser and server in one program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, calib=calib)
     server.run_til_dead(t)
 
 
@@ -321,25 +335,19 @@ def main():
     """Run color tracker entry point."""
     # allow calling from both python -m and from pyvr:
     argv = sys.argv[1:]
-    if sys.argv[1] != "track":
+    if len(argv) < 2 or sys.argv[1] != "track":
         argv = ["track"] + argv
 
     args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
 
-    width, height = args["--resolution"].split("x")
-
-    if args["--camera"].isdigit():
-        cam = int(args["--camera"])
+    if args["--calibration-data"]:
+        calib = CalibrationData.load_from_file(args["--calibration-data"])
     else:
-        cam = args["--camera"]
+        calib = CalibrationData.load_from_file('rgby_calibration.pickle')
 
-    if args["--server"]:
-        run_poser_and_server(args["--ip_address"], cam)
+    if args["--standalone"]:
+        run_poser_and_server(args["--ip_address"], calib)
     else:
-        run_poser_only(args["--ip_address"], cam)
+        run_poser_only(args["--ip_address"], calib)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()

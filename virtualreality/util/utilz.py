@@ -12,6 +12,7 @@ import serial.threaded
 from pykalman import KalmanFilter
 from displayarray import read_updates
 
+
 def format_str_for_write(input_str: str) -> bytes:
     """Format a string for writing to SteamVR's stream."""
     if len(input_str) < 1:
@@ -34,6 +35,30 @@ async def read(reader: StreamReader, read_len: int = 20) -> str:
         time.sleep(0)  # allows thread switching
 
     return "".join(data)
+
+
+def read2(reader, read_len=20):
+    """Read one line from reader asynchronously."""
+    data = []
+    temp = " "
+    while "\n" not in temp and temp != "":
+        temp = reader.recv(read_len)
+        temp = temp.decode("utf-8")
+        data.append(temp)
+        time.sleep(0)  # allows thread switching
+
+    return "".join(data)
+
+async def read3(reader: StreamReader, read_len: int = 20) -> str:
+    """Read one line from reader asynchronously."""
+    data = bytearray()
+    temp = b" "
+    while b"\n" not in temp and temp != b"":
+        temp = await reader.read(read_len)
+        data.extend(temp)
+        time.sleep(0)  # allows thread switching
+
+    return data
 
 
 def rotate_z(points: Dict[str, Dict[str, float]], angle: float):
@@ -98,8 +123,8 @@ def translate(points: Dict[str, Dict[str, float]], offsets: Sequence[float]) -> 
 
 def strings_share_characters(str1: str, str2: str) -> bool:
     """Determine if two strings share any characters."""
-    for i in str1:
-        if i in str2:
+    for i in str2:
+        if i in str1:
             return True
 
     return False
@@ -107,16 +132,16 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 
 def get_numbers_from_text(text, separator="\t"):
     """Get a list of number from a string of numbers seperated by :separator:[default: "\t"]."""
-    if isinstance(text, bytearray):
-        text = text.decode('utf-8')
+    if isinstance(text, bytearray) or isinstance(text, bytes):
+        text = text.decode("utf-8")
     try:
-        if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
+        if strings_share_characters(text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
 
         return [float(i) for i in text.split(separator)]
 
     except Exception as e:
-        print(f"get_numbers_from_text: {e} {repr(text)}")
+        print(f"get_numbers_from_text: {repr(e)} {repr(text)}")
 
         return []
 
@@ -350,7 +375,7 @@ class BlobTracker(threading.Thread):
             if frame is not self.last_frame:
                 self.time_of_last_frame = time.time()
         except Exception as e:
-            print ('_try_get_frame() failed with:', repr(e), self._vs.frames)
+            print("_try_get_frame() failed with:", repr(e), self._vs.frames)
             frame = None
             can_track = False
         return frame, can_track
@@ -409,7 +434,7 @@ class BlobTracker(threading.Thread):
     def find_blobs_in_frame(self):
         """Get a frame from the camera and find all the blobs in it."""
         if self.alive:
-            frame, self.can_track= self._try_get_frame()
+            frame, self.can_track = self._try_get_frame()
 
             for key, mask_range in self.markerMasks.items():
                 hc, hr = mask_range["h"]
