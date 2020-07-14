@@ -25,14 +25,13 @@ class Poser(templates.PoserTemplate):
     def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, calibration_map_file=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.serialpaths = {"hmd" : "COM4", "contr_l" : "COM4"}
+        self.serialpaths = {"hmd" : "COM4", "contr_l" : "COM5"}
         
     @templates.thread_register(1/50)
     async def get_hmd_orientation(self) :
+        h = 0
         with serial.Serial(self.serialpaths["hmd"], 115200, timeout=1 / 4) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
-
-                h = 0
                 while self.coro_keep_alive["get_hmd_orientation"][0] :
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read)
@@ -56,18 +55,17 @@ class Poser(templates.PoserTemplate):
                     except Exception as e:
                         print(f"{self.get_hmd_orientation.__name__}: {e}")
                         break
-    """
+                    
+                    await asyncio.sleep(self.coro_keep_alive["get_hmd_orientation"][1])
+                        
+    
     @templates.thread_register(1/50)
     async def get_controller_orientation(self) :
-        with serial.serial(self.serialpaths["contr_l"], 115200, timeout=1 / 4) as ser:
-            with serial.threaded.readerthread(ser, u.serialreaderfactory) as protocol:
-                for _ in range(10):
-                    protocol.write_line("nut")
-                    await async.sleep(1)
-                
+        with serial.Serial(self.serialpaths["contr_l"], 115200, timeout=1 / 4) as ser:
+            with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
                 while self.coro_keep_alive["get_controller_orientation"][0] :
                     try:
-                        gg = u.get_numbers_from_text(protocol.last_read, ',')
+                        gg = u.get_numbers_from_text(protocol.last_read)
 
                         if len(gg) > 0 :
                             (w, x, y, z) = gg
@@ -79,14 +77,16 @@ class Poser(templates.PoserTemplate):
                     except exception as e:
                         print(f"{self.get_controller_orientation.__name__}: {e}")
                         break
-"""
+
+                    await asyncio.sleep(self.coro_keep_alive["get_controller_orientation"][1])
+
 def main():
     argv = sys.argv[1:]
-    if sys.argv[1] != "custom_track" :
+    if sys.argv[1] != "custom-tracker" :
         argv = ["track"] + argv
 
     #args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
 
-    t = Poser()
+    t = Poser(send_delay=1/50)
     asyncio.run(t.main())
 
