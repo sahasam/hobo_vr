@@ -29,20 +29,20 @@ from virtualreality import __version__
 class ColorRange(object):
     def __init__(self,
                  color_num,
-                 hue_center=0,
-                 hue_range=180,
-                 sat_center=0,
-                 sat_range=180,
-                 val_center=0,
-                 val_range=180
+                 hue_min=0,
+                 hue_max=180,
+                 sat_min=0,
+                 sat_max=180,
+                 val_min=0,
+                 val_max=180
                  ):
         self.color_num = color_num
-        self.hue_center = hue_center
-        self.hue_range = hue_range
-        self.sat_center = sat_center
-        self.sat_range = sat_range
-        self.val_center = val_center
-        self.val_range = val_range
+        self.hue_min = hue_min
+        self.hue_max = hue_max
+        self.sat_min = sat_min
+        self.sat_max = sat_max
+        self.val_min = val_min
+        self.val_max = val_max
 
 
 class CalibrationData(object):
@@ -86,9 +86,9 @@ def colordata_to_blob(colordata, mapdata):
     for key, clr_range_index in mapdata.items():
         temp = colordata.color_ranges[clr_range_index]
         out[key] = {
-                'h':(temp.hue_center, temp.hue_range),
-                's':(temp.sat_center, temp.sat_range),
-                'v':(temp.val_center, temp.val_range),
+                'h':(temp.hue_min, temp.hue_max),
+                's':(temp.sat_min, temp.sat_max),
+                'v':(temp.val_min, temp.val_max),
                     }
 
     return out
@@ -119,15 +119,15 @@ def list_supported_capture_properties(cap: cv2.VideoCapture):
 
 def get_color_mask(hsv, color_range: ColorRange):
     color_low = [
-        color_range.hue_center - color_range.hue_range,
-        color_range.sat_center - color_range.sat_range,
-        color_range.val_center - color_range.val_range,
+        color_range.hue_min,
+        color_range.sat_min,
+        color_range.val_min,
     ]
 
     color_high = [
-        color_range.hue_center + color_range.hue_range,
-        color_range.sat_center + color_range.sat_range,
-        color_range.val_center + color_range.val_range,
+        color_range.hue_max,
+        color_range.sat_max,
+        color_range.val_max,
     ]
 
     color_low_neg = copy(color_low)
@@ -219,22 +219,22 @@ def manual_calibration(
         cv2.namedWindow(tracker_window_names[color])
 
         cv2.createTrackbar(
-            "hue center", tracker_window_names[color], ranges.color_ranges[color].hue_center, 180, lambda _: None,
+            "hue min", tracker_window_names[color], ranges.color_ranges[color].hue_min, 180, lambda _: None,
         )
         cv2.createTrackbar(
-            "hue range", tracker_window_names[color], ranges.color_ranges[color].hue_range, 180, lambda _: None,
+            "hue max", tracker_window_names[color], ranges.color_ranges[color].hue_max, 180, lambda _: None,
         )
         cv2.createTrackbar(
-            "sat center", tracker_window_names[color], ranges.color_ranges[color].sat_center, 255, lambda _: None,
+            "sat min", tracker_window_names[color], ranges.color_ranges[color].sat_min, 255, lambda _: None,
         )
         cv2.createTrackbar(
-            "sat range", tracker_window_names[color], ranges.color_ranges[color].sat_range, 255, lambda _: None,
+            "sat max", tracker_window_names[color], ranges.color_ranges[color].sat_max, 255, lambda _: None,
         )
         cv2.createTrackbar(
-            "val center", tracker_window_names[color], ranges.color_ranges[color].val_center, 255, lambda _: None,
+            "val min", tracker_window_names[color], ranges.color_ranges[color].val_min, 255, lambda _: None,
         )
         cv2.createTrackbar(
-            "val range", tracker_window_names[color], ranges.color_ranges[color].val_range, 255, lambda _: None,
+            "val max", tracker_window_names[color], ranges.color_ranges[color].val_max, 255, lambda _: None,
         )
 
     while 1:
@@ -253,19 +253,19 @@ def manual_calibration(
         ranges.saturation = saturation
 
         for color in range(num_colors_to_track):
-            hue_center = cv2.getTrackbarPos("hue center", tracker_window_names[color])
-            hue_range = cv2.getTrackbarPos("hue range", tracker_window_names[color])
-            sat_center = cv2.getTrackbarPos("sat center", tracker_window_names[color])
-            sat_range = cv2.getTrackbarPos("sat range", tracker_window_names[color])
-            val_center = cv2.getTrackbarPos("val center", tracker_window_names[color])
-            val_range = cv2.getTrackbarPos("val range", tracker_window_names[color])
+            hue_min = cv2.getTrackbarPos("hue min", tracker_window_names[color])
+            hue_max = cv2.getTrackbarPos("hue max", tracker_window_names[color])
+            sat_min = cv2.getTrackbarPos("sat min", tracker_window_names[color])
+            sat_max = cv2.getTrackbarPos("sat max", tracker_window_names[color])
+            val_min = cv2.getTrackbarPos("val min", tracker_window_names[color])
+            val_max = cv2.getTrackbarPos("val max", tracker_window_names[color])
 
-            ranges.color_ranges[color].hue_center = hue_center
-            ranges.color_ranges[color].hue_range = hue_range
-            ranges.color_ranges[color].sat_center = sat_center
-            ranges.color_ranges[color].sat_range = sat_range
-            ranges.color_ranges[color].val_center = val_center
-            ranges.color_ranges[color].val_range = val_range
+            ranges.color_ranges[color].hue_min = hue_min
+            ranges.color_ranges[color].hue_max = hue_max
+            ranges.color_ranges[color].sat_min = sat_min
+            ranges.color_ranges[color].sat_max = sat_max
+            ranges.color_ranges[color].val_min = val_min
+            ranges.color_ranges[color].val_max = val_max
 
             mask = get_color_mask(hsv, ranges.color_ranges[color])
 
@@ -281,19 +281,19 @@ def manual_calibration(
             break
 
     for color in range(num_colors_to_track):
-        hue_center = cv2.getTrackbarPos("hue center", tracker_window_names[color])
-        hue_range = cv2.getTrackbarPos("hue range", tracker_window_names[color])
-        sat_center = cv2.getTrackbarPos("sat center", tracker_window_names[color])
-        sat_range = cv2.getTrackbarPos("sat range", tracker_window_names[color])
-        val_center = cv2.getTrackbarPos("val center", tracker_window_names[color])
-        val_range = cv2.getTrackbarPos("val range", tracker_window_names[color])
+        hue_min = cv2.getTrackbarPos("hue min", tracker_window_names[color])
+        hue_max = cv2.getTrackbarPos("hue max", tracker_window_names[color])
+        sat_min = cv2.getTrackbarPos("sat min", tracker_window_names[color])
+        sat_max = cv2.getTrackbarPos("sat max", tracker_window_names[color])
+        val_min = cv2.getTrackbarPos("val min", tracker_window_names[color])
+        val_max = cv2.getTrackbarPos("val max", tracker_window_names[color])
 
-        print(f"hue_center[{color}]: {hue_center}")
-        print(f"hue_range[{color}]: {hue_range}")
-        print(f"sat_center[{color}]: {sat_center}")
-        print(f"sat_range[{color}]: {sat_range}")
-        print(f"val_center[{color}]: {val_center}")
-        print(f"val_range[{color}]: {val_range}")
+        print(f"hue_min[{color}]: {hue_min}")
+        print(f"hue_max[{color}]: {hue_max}")
+        print(f"sat_min[{color}]: {sat_min}")
+        print(f"sat_max[{color}]: {sat_max}")
+        print(f"val_min[{color}]: {val_min}")
+        print(f"val_max[{color}]: {val_max}")
 
     if save_file:
         ranges.save_to_file(save_file)
