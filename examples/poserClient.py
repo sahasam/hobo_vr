@@ -18,37 +18,55 @@ import asyncio
 import time
 import numpy as np
 import pyrr
+import serial
 
 from virtualreality import templates
 from virtualreality.server import server
+from virtualreality.util import utilz as u
 
-poser = templates.PoserClient()
+poser = templates.PoserClient(send_delay=1/50)
 
-@poser.thread_register(1/60)
+@poser.thread_register(1/50)
 async def example_thread():
     h = 0
-    while poser.coro_keep_alive["example_thread"][0]:
-        poser.pose["y"] = round(np.sin(h), 4)
-        poser.pose["x"] = round(np.cos(h), 4)
-        poser.pose["z"] = round(np.cos(h), 4)
+    with serial.Serial("COM4", 115200, timeout=1 / 4) as ser:
+        with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
+            while poser.coro_keep_alive["example_thread"][0]:
+                try:
+                    gg = u.get_numbers_from_text(protocol.last_read)
 
-        x, y, z, w = pyrr.Quaternion.from_y_rotation(h)
-        poser.pose.r_x = round(x, 4)
-        poser.pose.r_y = round(y, 4)
-        poser.pose.r_z = round(z, 4)
-        poser.pose.r_w = round(w, 4)
+                    if len(gg) > 0 :
+                        (w,x,y,z,m) = gg
+                        print(gg)
+                        poser.pose["y"] = round(np.sin(h), 4)
+                        poser.pose["x"] = round(np.cos(h), 4)
+                        poser.pose["z"] = round(np.cos(h), 4)
 
-        h += 0.01
+                        poser.pose_controller_l["y"] = 1
+                        poser.pose_controller_l["x"] = 1
+                        poser.pose_controller_l["z"] = 1
 
-        await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
+                        poser.pose.r_x = round(x, 4)
+                        poser.pose.r_y = round(y, 4)
+                        poser.pose.r_z = round(z, 4)
+                        poser.pose.r_w = round(w, 4)
+
+                        poser.pose_controller_l.r_x = round(x, 4)
+                        poser.pose_controller_l.r_y = round(y, 4)
+                        poser.pose_controller_l.r_z = round(z, 4)
+                        poser.pose_controller_l.r_w = round(w, 4)
+                        
+                        poser.pose_controller_r.r_x = round(x, 4)
+                        poser.pose_controller_r.r_y = round(y, 4)
+                        poser.pose_controller_r.r_z = round(z, 4)
+                        poser.pose_controller_r.r_w = round(w, 4)
 
 
-# @poser.thread_register(1, runInDefaultExecutor=True)
-# def example_thread2():
-#     while poser.coro_keep_alive["example_thread2"][0]:
-#         poser.pose["x"] += 0.2
+                    h += 0.01
+                except Exception as e :
+                    print(f"{e}")
+                    break
 
-#         time.sleep(poser.coro_keep_alive["example_thread2"][1])
-
+                await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
 
 asyncio.run(poser.main())
