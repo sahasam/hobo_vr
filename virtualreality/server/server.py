@@ -59,8 +59,8 @@ async def handle_echo(reader, writer):
 
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
 
-            if PRINT_MESSAGES:
-                print("Received %r from %r %r" % (data, addr, sendOK))
+            #if PRINT_MESSAGES:
+            print("Received %r from %r %r" % (data, addr, sendOK))
 
             await asyncio.sleep(0.00001)
 
