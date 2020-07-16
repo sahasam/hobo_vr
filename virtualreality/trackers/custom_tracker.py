@@ -62,39 +62,6 @@ class Poser(templates.PoserTemplate):
                         break
                     
                     await asyncio.sleep(self.coro_keep_alive["get_hmd_orientation"][1])
-                        
-"""
-    @templates.thread_register(1/50)
-    async def get_controller_orientation(self) :
-        with serial.Serial(self.serialpaths["contr_l"], 115200, timeout=1 / 4) as ser:
-            with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
-                while self.coro_keep_alive["get_controller_orientation"][0] :
-                    try:
-                        gg = u.get_numbers_from_text(protocol.last_read)
-
-                        if len(gg) > 0 :
-                            (w, x, y, z) = gg
-
-                            self.pose_controller_r.r_w = round(w, 5)
-                            self.pose_controller_r.r_x = round(x, 5)
-                            self.pose_controller_r.r_y = round(y, 5)
-                            self.pose_controller_r.r_z = round(z, 5)
-                    except exception as e:
-                        print(f"{self.get_controller_orientation.__name__}: {e}")
-                        break
-
-                    await asyncio.sleep(self.coro_keep_alive["get_controller_orientation"][1])
-    
-    async def get_location(self) :
-        Get locations from blob tracker
-        try:
-            #insert code to run blobtrackers
-        
-        except Exception as e:
-            print(f"failed to init location tracker: {repr(e)}")
-            return
-"""
-
 
 def main():
     argv = sys.argv[1:]
