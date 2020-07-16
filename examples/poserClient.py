@@ -34,9 +34,10 @@ async def example_thread():
             while poser.coro_keep_alive["example_thread"][0]:
                 try:
                     gg = u.get_numbers_from_text(protocol.last_read)
+                    print(protocol.last_read)
 
                     if len(gg) > 0 :
-                        (w,x,y,z,m) = gg
+                        (w,x,y,z) = gg
                         print(gg)
                         poser.pose["y"] = round(np.sin(h), 4)
                         poser.pose["x"] = round(np.cos(h), 4)
