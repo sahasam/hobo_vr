@@ -4,6 +4,8 @@ import asyncio
 from ..templates import PoserTemplate
 from ..util import utilz as u
 
+import time
+
 DOMAIN = (None, 6969)
 conz = {}
 
@@ -37,6 +39,7 @@ async def handle_echo(reader, writer):
     """Handle communication between poser and driver."""
     addr = writer.get_extra_info("peername")
     while 1:
+        startLoop = time.time()
         try:
 
             data = await u.read3(reader)
@@ -60,7 +63,7 @@ async def handle_echo(reader, writer):
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
 
             #if PRINT_MESSAGES:
-            print("Received %r from %r %r" % (data, addr, sendOK))
+            print("Received %r from %r %f" % (data, addr, time.time() - startLoop))
 
             await asyncio.sleep(0.00001)
 

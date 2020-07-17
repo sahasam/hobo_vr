@@ -25,11 +25,10 @@ class Poser(templates.PoserTemplate):
     def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, calibration_map_file=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.serialpaths = {"hmd" : "COM4", "contr_l" : "COM5"}
+        self.serialpaths = {"hmd" : "COM3", "contr_l" : "COM5"}
         
     @templates.thread_register(1/50)
     async def get_hmd_orientation(self) :
-        h = 0
         with serial.Serial(self.serialpaths["hmd"], 115200, timeout=1 / 4) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
                 while self.coro_keep_alive["get_hmd_orientation"][0] :
@@ -50,12 +49,6 @@ class Poser(templates.PoserTemplate):
                             self.pose_controller_r.r_x = round(c_x, 5)
                             self.pose_controller_r.r_y = round(c_y, 5)
                             self.pose_controller_r.r_z = round(c_z, 5)
-
-                        self.pose["y"] = round(np.sin(h), 4)
-                        self.pose["x"] = round(np.cos(h), 4)
-                        self.pose["z"] = round(np.cos(h), 4)
-
-                        h += 0.01
 
                     except Exception as e:
                         print(f"{self.get_hmd_orientation.__name__}: {e}")
