@@ -1,5 +1,8 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..templates import PoserTemplate
 from ..util import utilz as u
@@ -10,7 +13,6 @@ DOMAIN = (None, 6969)
 conz = {}
 
 PRINT_MESSAGES = False
-
 
 async def broadcast(everyone, data, me, VIP):
     """
@@ -63,7 +65,8 @@ async def handle_echo(reader, writer):
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
 
             #if PRINT_MESSAGES:
-            print("Received %r from %r %f" % (data, addr, time.time() - startLoop))
+            logger.debug(f"Received {data} from {addr}, {sendOK}")
+            print(f"Received {data} from {addr}, {sendOK}")
 
             await asyncio.sleep(0.00001)
 
