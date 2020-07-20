@@ -46,15 +46,15 @@ async def handle_echo(reader, writer):
 
             data = await u.read3(reader)
             if addr not in conz:
-                print("New connection from {}".format(addr))
+                logger.info("New connection from {}".format(addr))
                 isDriver = False
                 isPoser = False
                 if data == b"hello\n":
-                    print("driver connected")
+                    logger.info("driver connected")
                     isDriver = True
 
                 if data == b"poser here\n":
-                    print("poser connected")
+                    logger.info("driver connected")
                     isPoser = True
 
                 conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
@@ -64,17 +64,15 @@ async def handle_echo(reader, writer):
 
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
 
-            #if PRINT_MESSAGES:
             logger.debug(f"Received {data} from {addr}, {sendOK}")
-            print(f"Received {data} from {addr}, {sendOK}")
 
             await asyncio.sleep(0.00001)
 
         except Exception as e:
-            print("Losing connection to {}, reason: {}".format(addr, e))
+            logging.warning("Losing connection to {}, reason: {}", format(addr,e))
             break
 
-    print(f"Connection to {addr} closed")
+    logging.info(f"Connection to {addr} closed")
     writer.close()
     if addr in conz:
         del conz[addr]
@@ -90,7 +88,7 @@ def run_til_dead(poser: PoserTemplate = None):
         poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
-    print("Serving on {}".format(server.sockets[0].getsockname()))
+    logger.info("Serving on {}".format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
