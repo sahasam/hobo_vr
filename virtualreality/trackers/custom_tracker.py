@@ -25,7 +25,8 @@ class Poser(templates.PoserTemplate):
     def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, calibration_map_file=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.serialpaths = {"hmd" : "COM3", "contr_l" : "COM5"}
+        self.serialpaths = {"hmd" : "COM4", "contr_l" : "COM5"}
+        logging.info("serial ports: {}".format(self.serialpaths))
         
     @templates.thread_register(1/50)
     async def get_hmd_orientation(self) :
@@ -38,7 +39,7 @@ class Poser(templates.PoserTemplate):
                         if len(gg) > 0 :
                             (w, x, y, z, c_w, c_x, c_y, c_z, m) = gg
 
-                            print(gg)
+                            logging.debug(gg)
 
                             self.pose.r_w = round(w, 5)
                             self.pose.r_x = round(x, 5)

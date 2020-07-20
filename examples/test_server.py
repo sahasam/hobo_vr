@@ -6,7 +6,6 @@ import pyrr
 import logging
 
 from virtualreality import templates
-from virtualreality.server import server
 from virtualreality.util import utilz as u
 
 logging.basicConfig(level=logging.DEBUG, filename='server_ping.log', format="%(levelname)s - %(message)s")
