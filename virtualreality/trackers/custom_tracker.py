@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import math
 import sys
 from copy import copy
@@ -18,6 +19,7 @@ from ..calibration.manual_color_mask_calibration import load_mapdata_from_file
 from ..server import server
 from ..templates import ControllerState
 
+logger = logging.getLogger(__name__)
 
 class Poser(templates.PoserTemplate):
     """A pose estimator."""
@@ -26,7 +28,7 @@ class Poser(templates.PoserTemplate):
         super().__init__(*args, **kwargs)
 
         self.serialpaths = {"hmd" : "COM4", "contr_l" : "COM5"}
-        logging.info("serial ports: {}".format(self.serialpaths))
+        logger.info("serial ports: {}".format(self.serialpaths))
         
     @templates.thread_register(1/50)
     async def get_hmd_orientation(self) :
@@ -39,7 +41,7 @@ class Poser(templates.PoserTemplate):
                         if len(gg) > 0 :
                             (w, x, y, z, c_w, c_x, c_y, c_z, m) = gg
 
-                            logging.debug(gg)
+                            logger.debug(gg)
 
                             self.pose.r_w = round(w, 5)
                             self.pose.r_x = round(x, 5)
@@ -52,7 +54,7 @@ class Poser(templates.PoserTemplate):
                             self.pose_controller_r.r_z = round(c_z, 5)
 
                     except Exception as e:
-                        print(f"{self.get_hmd_orientation.__name__}: {e}")
+                        logger.error(f"{self.get_hmd_orientation.__name__}: {e}")
                         break
                     
                     await asyncio.sleep(self.coro_keep_alive["get_hmd_orientation"][1])
