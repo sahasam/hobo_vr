@@ -24,17 +24,21 @@ async def broadcast(everyone, data, me, VIP):
     :param VIP:
     :return:
     """
-    for key, acc in everyone.items():
-        try:
-            if me != key and (VIP == acc[2] or acc[3]):
-                acc[1].write(data)
-                await acc[1].drain()
+    try:
+        for key, acc in list(everyone.items()):
+            try:
+                if me != key and (VIP == acc[2] or acc[3]):
+                    acc[1].write(data)
+                    await acc[1].drain()
 
-        except:
-            # print (key, 'reason:', e)
-            pass
+            except:
+                # print (key, 'reason:', e)
+                pass
 
-    return True
+    except RuntimeError as e:
+        return e
+
+    return False
 
 
 async def handle_echo(reader, writer):
@@ -57,16 +61,21 @@ async def handle_echo(reader, writer):
                     logger.info("driver connected")
                     isPoser = True
 
-                conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
+    if not len(data) or data == b"CLOSE\n":
+        return
+
+    while 1:
+        try:
+            data = await u.read3(reader)
 
             if not len(data) or data == b"CLOSE\n":
                 break
 
-            sendOK = await broadcast(conz, data, addr, conz[addr][2])
+            sendOknt = await broadcast(conz, data, addr, conz[addr][2])
 
             logger.debug(f"Received {data} from {addr}, {sendOK}")
 
-            await asyncio.sleep(0.00001)
+            # await asyncio.sleep(0.00001)
 
         except Exception as e:
             logging.warning("Losing connection to {}, reason: {}", format(addr,e))
@@ -78,10 +87,10 @@ async def handle_echo(reader, writer):
         del conz[addr]
 
 
-def run_til_dead(poser: PoserTemplate = None):
+def run_til_dead(poser: PoserTemplate = None, conn_handle=handle_echo):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
-    coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
+    coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)
 
     if poser is not None:
