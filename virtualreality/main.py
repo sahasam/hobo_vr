@@ -31,7 +31,7 @@ def main():
         from virtualreality.calibration.manual_color_mask_calibration import main
 
         main()
-    elif args["<command>"] == "calibrate-cam":
+    if args["<command>"] == "calibrate-cam":
         from virtualreality.calibration.camera_calibration import main
 
         main()
